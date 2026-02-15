@@ -1,57 +1,61 @@
 import "./ChatWindow.css";
 import Chat from "./Chat.jsx";
 import { MyContext } from "./MyContext.jsx";
-import { useContext, useState, useEffect } from "react";
-import {ScaleLoader} from "react-spinners";
+import { useContext, useState, useRef } from "react";
+import { ScaleLoader } from "react-spinners";
+
+import { API_BASE_URL } from "./config";
 
 function ChatWindow() {
-    const {prompt, setPrompt, reply, setReply, currThreadId, setPrevChats, setNewChat} = useContext(MyContext);
+    const { prompt, setPrompt, reply, setReply, currThreadId, setPrevChats, setNewChat } = useContext(MyContext);
     const [loading, setLoading] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
+    const savedPrompt = useRef("");
 
     const getReply = async () => {
+        if (!prompt.trim()) return;
+
         setLoading(true);
         setNewChat(false);
 
-        console.log("message ", prompt, " threadId ", currThreadId);
+        // Save the prompt before clearing it
+        const currentPrompt = prompt;
+        savedPrompt.current = currentPrompt;
+
+        // Immediately add user message to chat
+        setPrevChats(prev => [...prev, { role: "user", content: currentPrompt }]);
+        setPrompt("");
+
+        console.log("message ", currentPrompt, " threadId ", currThreadId);
         const options = {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                message: prompt,
+                message: currentPrompt,
                 threadId: currThreadId
             })
         };
 
         try {
-            const response = await fetch("http://localhost:8080/api/chat", options);
+            const response = await fetch(`${API_BASE_URL}/api/chat`, options);
             const res = await response.json();
             console.log(res);
-            setReply(res.reply);
-        } catch(err) {
+
+            // Add assistant reply to chat
+            if (res.reply) {
+                setPrevChats(prev => [...prev, { role: "assistant", content: res.reply }]);
+                setReply(res.reply);
+            } else {
+                console.error("API error: no reply received", res);
+                setPrevChats(prev => [...prev, { role: "assistant", content: `⚠️ Error: ${res.error || "No reply from server"}` }]);
+            }
+        } catch (err) {
             console.log(err);
         }
         setLoading(false);
     }
-
-    //Append new chat to prevChats
-    useEffect(() => {
-        if(prompt && reply) {
-            setPrevChats(prevChats => (
-                [...prevChats, {
-                    role: "user",
-                    content: prompt
-                },{
-                    role: "assistant",
-                    content: reply
-                }]
-            ));
-        }
-
-        setPrompt("");
-    }, [reply]);
 
 
     const handleProfileClick = () => {
@@ -67,26 +71,26 @@ function ChatWindow() {
                 </div>
             </div>
             {
-                isOpen && 
+                isOpen &&
                 <div className="dropDown">
-                    <div className="dropDownItem"><i class="fa-solid fa-gear"></i> Settings</div>
-                    <div className="dropDownItem"><i class="fa-solid fa-cloud-arrow-up"></i> Upgrade plan</div>
-                    <div className="dropDownItem"><i class="fa-solid fa-arrow-right-from-bracket"></i> Log out</div>
+                    <div className="dropDownItem"><i className="fa-solid fa-gear"></i> Settings</div>
+                    <div className="dropDownItem"><i className="fa-solid fa-cloud-arrow-up"></i> Upgrade plan</div>
+                    <div className="dropDownItem"><i className="fa-solid fa-arrow-right-from-bracket"></i> Log out</div>
                 </div>
             }
             <Chat></Chat>
 
             <ScaleLoader color="#fff" loading={loading}>
             </ScaleLoader>
-            
+
             <div className="chatInput">
                 <div className="inputBox">
                     <input placeholder="Ask anything"
                         value={prompt}
                         onChange={(e) => setPrompt(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter'? getReply() : ''}
+                        onKeyDown={(e) => e.key === 'Enter' ? getReply() : ''}
                     >
-                           
+
                     </input>
                     <div id="submit" onClick={getReply}><i className="fa-solid fa-paper-plane"></i></div>
                 </div>

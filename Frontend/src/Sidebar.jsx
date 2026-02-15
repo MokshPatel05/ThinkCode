@@ -1,26 +1,28 @@
 import "./Sidebar.css";
 import { useContext, useEffect } from "react";
 import { MyContext } from "./MyContext.jsx";
-import {v1 as uuidv1} from "uuid";
+import { v1 as uuidv1 } from "uuid";
+
+import { API_BASE_URL } from "./config";
+import logo from "./assets/blacklogo.png";
 
 function Sidebar() {
-    const {allThreads, setAllThreads, currThreadId, setNewChat, setPrompt, setReply, setCurrThreadId, setPrevChats} = useContext(MyContext);
-
-    const getAllThreads = async () => {
-        try {
-            const response = await fetch("http://localhost:8080/api/thread");
-            const res = await response.json();
-            const filteredData = res.map(thread => ({threadId: thread.threadId, title: thread.title}));
-            //console.log(filteredData);
-            setAllThreads(filteredData);
-        } catch(err) {
-            console.log(err);
-        }
-    };
+    const { allThreads, setAllThreads, currThreadId, setNewChat, setPrompt, setReply, setCurrThreadId, setPrevChats } = useContext(MyContext);
 
     useEffect(() => {
+        const getAllThreads = async () => {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/thread`);
+                const res = await response.json();
+                const filteredData = res.map(thread => ({ threadId: thread.threadId, title: thread.title }));
+                //console.log(filteredData);
+                setAllThreads(filteredData);
+            } catch (err) {
+                console.log(err);
+            }
+        };
         getAllThreads();
-    }, [currThreadId])
+    }, [currThreadId, setAllThreads])
 
 
     const createNewChat = () => {
@@ -35,31 +37,31 @@ function Sidebar() {
         setCurrThreadId(newThreadId);
 
         try {
-            const response = await fetch(`http://localhost:8080/api/thread/${newThreadId}`);
+            const response = await fetch(`${API_BASE_URL}/api/thread/${newThreadId}`);
             const res = await response.json();
             console.log(res);
             setPrevChats(res);
             setNewChat(false);
             setReply(null);
-        } catch(err) {
+        } catch (err) {
             console.log(err);
         }
-    }   
+    }
 
     const deleteThread = async (threadId) => {
         try {
-            const response = await fetch(`http://localhost:8080/api/thread/${threadId}`, {method: "DELETE"});
+            const response = await fetch(`${API_BASE_URL}/api/thread/${threadId}`, { method: "DELETE" });
             const res = await response.json();
             console.log(res);
 
             //updated threads re-render
             setAllThreads(prev => prev.filter(thread => thread.threadId !== threadId));
 
-            if(threadId === currThreadId) {
+            if (threadId === currThreadId) {
                 createNewChat();
             }
 
-        } catch(err) {
+        } catch (err) {
             console.log(err);
         }
     }
@@ -67,17 +69,17 @@ function Sidebar() {
     return (
         <section className="sidebar">
             <button onClick={createNewChat}>
-                <img src="src/assets/blacklogo.png" alt="gpt logo" className="logo"></img>
+                <img src={logo} alt="gpt logo" className="logo"></img>
                 <span><i className="fa-solid fa-pen-to-square"></i></span>
             </button>
 
 
             <ul className="history">
                 {
-                    allThreads?.map((thread, idx) => (
-                        <li key={idx} 
+                    allThreads?.map((thread) => (
+                        <li key={thread.threadId}
                             onClick={(e) => changeThread(thread.threadId)}
-                            className={thread.threadId === currThreadId ? "highlighted": " "}
+                            className={thread.threadId === currThreadId ? "highlighted" : " "}
                         >
                             {thread.title}
                             <i className="fa-solid fa-trash"
@@ -90,9 +92,9 @@ function Sidebar() {
                     ))
                 }
             </ul>
- 
+
             <div className="sign">
-                <p>By ApnaCollege &hearts;</p>
+                <p>By Moksh &hearts;</p>
             </div>
         </section>
     )
